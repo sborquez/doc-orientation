@@ -1,6 +1,6 @@
 from flask import Flask, request, send_file
 from os import path, remove, environ
-from pytesseract import image_to_osd, Output
+from pytesseract import image_to_osd, Output, TesseractError
 import uuid
 
 try:
@@ -9,20 +9,32 @@ except ImportError:
     import Image
 
 
-def apply_orientation_correction(image_name, image_path):
+def apply_orientation_correction(image_name, image_path, target_size=1500, retry=False):
     """
     apply_orientation_correction aplica a la imagen la deteccion de orientacion
     y la aplicacion de la correccion.
     """
     image = Image.open(image_path)
-    result = image_to_osd(image, lang="spa", output_type=Output.DICT)
-    print(f"[INFO] Image orientation {result['orientation']}, rotation {result['rotate']}")
+    W, H = image.size
+    if W > H:
+        r = target_size/W
+    else:
+        r = target_size/H
+    image_resized = image.resize((int(W*r), int(H*r)))
+    try:
+        result = image_to_osd(image_resized, lang="spa", output_type=Output.DICT)
+    except TesseractError:
+        if not retry:
+            print("[INFO] Ocurrio un error por la resulucion de la imagen, reintentando...")
+            apply_orientation_correction(image_name, image_path, target_size=2000, retry=True)
+        else:
+            image_name, image_path, False
+    else:
+        print(f"[INFO] Image orientation {result['orientation']}, rotation {result['rotate']}")
+        rotated_image = image.rotate(-result["rotate"], expand=True)
+        rotated_image.save(image_path)
 
-    rotated_image = image.rotate(-result["rotate"], expand=True)
-
-    rotated_image.save(image_path)
-
-    return image_name, image_path
+    return image_name, image_path, True
 
 def save_file(file, folder):
     """
@@ -74,10 +86,15 @@ def doc_orientation():
     orig_file_name, temp_file = save_file(request.files['file'], temp_folder)
     
     # SE APLICA LA CORRECCION
-    new_file_name, new_file_path = apply_orientation_correction(orig_file_name, temp_file)
-
-    # PREPARAR RESPUESTA
-    respond = send_file(new_file_path, attachment_filename=new_file_name, as_attachment=True)
+    new_file_name, new_file_path, success = apply_orientation_correction(orig_file_name, temp_file)
+    if not success:
+        name, ext = path.splitext(new_file_name)
+        new_file_name = name + "_original" + ext
+        # PREPARAR RESPUESTA
+        respond = send_file(new_file_path, attachment_filename=new_file_name, as_attachment=True)
+    else:
+        # PREPARAR RESPUESTA
+        respond = send_file(new_file_path, attachment_filename=new_file_name, as_attachment=True)
 
     # ELIMINAR ARCHIVOS ORIGINALES
     clean(new_file_path)
