@@ -9,7 +9,7 @@ except ImportError:
     import Image
 
 
-def apply_orientation_correction(image_name, image_path, target_size=1500, retry=False):
+def apply_orientation_correction(image_name, image_path, target_size=1800, retry=False):
     """
     apply_orientation_correction aplica a la imagen la deteccion de orientacion
     y la aplicacion de la correccion.

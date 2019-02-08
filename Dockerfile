@@ -16,7 +16,7 @@ COPY /app /app
 WORKDIR /app
 
 # Set port
-ENV PORT 8000
+ENV PORT 4200
 EXPOSE 8000
 
 # Install requeriments.txt
@@ -24,4 +24,5 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # Run app.py when the container launches
-CMD ["python", "-u", "app.py"]
+#CMD ["python", "-u", "app.py"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8000", "wsgi"]
