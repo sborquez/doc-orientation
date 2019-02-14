@@ -25,4 +25,4 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # Run app.py when the container launches
 #CMD ["python", "-u", "app.py"]
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8000", "wsgi"]
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "wsgi"]
